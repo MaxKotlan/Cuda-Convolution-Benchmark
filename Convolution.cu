@@ -120,15 +120,18 @@ Result CudaPerformConvolution(const std::vector<int>& input, const std::vector<i
 }
 
 int main(int argc, char** argv){
-    int inputsize = 1024;
+    int inputsize = 512;
     std::vector<int> input(inputsize);
     std::generate(input.begin(), input.end(), []() { return rand() % 100; });
     std::vector<int> filter{1,2,3,2,1};
 
-    Result r = CpuPerformConvolution(input, kernel);
+    Result r = CpuPerformConvolution(input, filter);
 
     for (ConvolutionCudaKernel cudakern : cudaKernels){
         Result r1 = CudaPerformConvolution(input, filter, cudakern);
-        std::cout << r1.executiontime << " ms";
+        std::cout << "Kernel Executed in: " << r1.executiontime << " milliseconds" << std::endl;
+        for (auto element : r1.output)
+            std::cout << element << ", ";
+        std::cout << std::endl << std::endl;
     }
 }
