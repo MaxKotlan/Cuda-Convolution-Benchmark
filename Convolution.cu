@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cuda.h>
 #include <time.h>
+#include <chrono>
 #include <vector>
 #include <algorithm>
 #include <assert.h>
@@ -14,6 +15,10 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
       if (abort) exit(code);
    }
 }
+
+typedef std::chrono::high_resolution_clock Time;
+typedef std::chrono::milliseconds ms;
+typedef std::chrono::duration<float> fsec;
 
 struct Startup{
     int threadsperblock = 1024;
@@ -89,23 +94,28 @@ int CalculateOutputSize(int inputsize, int filtersize){
     return inputsize+ filtersize-1;
 }
 
-/*
-Result<T> CpuPerformConvolution(const std::vector<int>& input, const std::vector<int>& filter){
-    std::vector<int> output(CalculateOutputSize(input.size(), filter.size()));
+template<class T = int>
+Result<T> CpuPerformConvolution(const std::vector<T>& input, const std::vector<T>& filter){
+    std::vector<T> output(CalculateOutputSize(input.size(), filter.size()));
 
-    bool isFilterSymmetric = isSymmetric(filter);
-    for (int i = 0; i < input.size(); i++){
-        if (isFilterSymmetric){
-            for (int k = 0; k < filter.size()/2+1; k++){
-                output[k+i] = filter[k] * input[k+i];
-                output[(filter.size() - k - 1)+i] = filter[k] * input[(filter.size() - k - 1)+i];
-            }
+    auto t0 = Time::now();
+    for (int outputindex = 0; outputindex < output.size(); outputindex++){
+        T result = 0;
+        int inputstart = outputindex - (filter.size()/2)-1;
+        for (int filterindex = 0; filterindex < filter.size(); filterindex++) {
+            int inputindex = inputstart + filterindex;
+            if (inputindex >= 0 && inputindex < output.size()-2)
+                result += input[inputindex] * filter[filterindex];
         }
+        output[outputindex] = result;
     }
+    auto t1 = Time::now();
+    fsec fs = t1 - t0;
+    ms d = std::chrono::duration_cast<ms>(fs);
 
-    Result r = {0, input};
+    Result<T> r = {(float)d.count(), std::move(output)};
     return std::move(r);
-}*/
+}
 
 template<class T = int>
 Result<T> CudaPerformConvolution(const std::vector<T>& input, const std::vector<T>& filter, ConvolutionCudaKernel<T> algorithm){
@@ -204,19 +214,28 @@ int main(int argc, char** argv){
         Result<int> r1 = CudaPerformConvolution(input, filter, NaiveConvolution);
         std::cout << "Kernel Executed in: " << r1.executiontime << " milliseconds" << std::endl;
         printsome(r1.output, 10);
-        std::cout << std::endl;
     }
-
     {
         int inputsize = 1024*1024*256;
         std::vector<float> input(inputsize);//(inputsize);
-        std::generate(input.begin(), input.end(), []() { static float x = 0.5; x++;return x; });
+        std::generate(input.begin(), input.end(), []() { static float x = 0; x++;return x; });
         std::vector<float> filter(300);
         std::generate(filter.begin(), filter.end(), []() { static float x = -1.; x++;return x; });
 
         std::cout << std::endl;
         Result<float> r1 = CudaPerformConvolution(input, filter, NaiveConvolution);
         std::cout << "Kernel Executed in: " << r1.executiontime << " milliseconds" << std::endl;
+        printsome(r1.output, 10);
+        std::cout << std::endl;
+    }
+    {
+        int inputsize = 1024;
+        std::vector<float> input(inputsize);//(inputsize);
+        std::generate(input.begin(), input.end(), []() { static float x = 0; x++;return x; });
+        std::vector<float> filter(300);
+        std::generate(filter.begin(), filter.end(), []() { static float x = -1.; x++;return x; });
+        Result<float> r1 = CpuPerformConvolution(input, filter);
+        std::cout << "Cpu Executed in: " << r1.executiontime << " milliseconds" << std::endl;
         printsome(r1.output, 10);
         std::cout << std::endl;
     }
