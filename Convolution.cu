@@ -140,7 +140,8 @@ Result<T> CudaPerformConvolution(const std::vector<T>& input, const std::vector<
 }
 
 /*Prints a few elements from the front and a few from the back*/
-void printsome(const std::vector<int>& vec, int range){
+template<class T = int>
+void printsome(const std::vector<T>& vec, int range){
     int rr = (vec.size()*2 > range) ? range : vec.size();
     int br = (vec.size()*2 > range) ? vec.size() - range/2 : vec.size();
     for (int i = 0; i < rr; i++)
@@ -186,25 +187,31 @@ int main(int argc, char** argv){
     TestLectureExample();
 
 
-    int inputsize = 1024*1024*256;
-    std::vector<int> input(inputsize);//(inputsize);
-    std::generate(input.begin(), input.end(), []() { static int x = 0; x++;return x; });
-    std::vector<int> filter(300);
-    std::generate(filter.begin(), filter.end(), []() { static int x = -1; x++;return x; });
+    {
+        int inputsize = 1024*1024*256;
+        std::vector<int> input(inputsize);//(inputsize);
+        std::generate(input.begin(), input.end(), []() { static int x = 0; x++;return x; });
+        std::vector<int> filter(300);
+        std::generate(filter.begin(), filter.end(), []() { static int x = -1; x++;return x; });
 
-    //Result r = CpuPerformConvolution(input, filter);
-    
-    //for (auto it = cudaKernels<int>.begin(); it != cudaKernels.end(); it++){
-    //    Result<int> r1 = CudaPerformConvolution(input, filter, *it);
-    //    std::cout << "Kernel Executed in: " << r1.executiontime << " milliseconds" << std::endl;
-    //    printsome(r1.output, 10);
-    //    std::cout << std::endl << std::endl;
-    //}
-    //for (auto cudakern : cudaKernels<int>){
-    std::cout << std::endl;
-    Result<int> r1 = CudaPerformConvolution(input, filter, NaiveConvolution);
-    std::cout << "Kernel Executed in: " << r1.executiontime << " milliseconds" << std::endl;
-    printsome(r1.output, 10);
-    std::cout << std::endl << std::endl;
-    //}
+        std::cout << std::endl;
+        Result<int> r1 = CudaPerformConvolution(input, filter, NaiveConvolution);
+        std::cout << "Kernel Executed in: " << r1.executiontime << " milliseconds" << std::endl;
+        printsome(r1.output, 10);
+        std::cout << std::endl;
+    }
+
+    {
+        int inputsize = 1024*1024*256;
+        std::vector<float> input(inputsize);//(inputsize);
+        std::generate(input.begin(), input.end(), []() { static float x = 0.5; x++;return x; });
+        std::vector<float> filter(300);
+        std::generate(filter.begin(), filter.end(), []() { static float x = -1.; x++;return x; });
+
+        std::cout << std::endl;
+        Result<float> r1 = CudaPerformConvolution(input, filter, NaiveConvolution);
+        std::cout << "Kernel Executed in: " << r1.executiontime << " milliseconds" << std::endl;
+        printsome(r1.output, 10);
+        std::cout << std::endl;
+    }
 }
