@@ -19,9 +19,10 @@ struct Startup{
     int threadsperblock = 1024;
 } startup;
 
+template<class T = int>
 struct Result {
     float executiontime;
-    std::vector<int> output;
+    std::vector<T> output;
 
     /*Move operator to only shallow copy vector*/
     Result& operator=(const Result& other) {
@@ -31,21 +32,23 @@ struct Result {
     }
 };
 
+template<class T = int>
 struct KernelParameters {
-    int* input;
+    T* input;
     int  inputsize;
-    int* filter;
+    T* filter;
     int  filtersize;
-    int* output;
+    T* output;
     int  outputsize;
-    int  ghostvalue = 0;
+    T  ghostvalue = 0;
 };
 
-__global__ void NaiveConvolution(KernelParameters parameters){
+template<class T = int>
+__global__ void NaiveConvolution(KernelParameters<T> parameters){
     int outputindex = blockDim.x * blockIdx.x + threadIdx.x;
 
     if (outputindex < parameters.outputsize){
-        int result = parameters.ghostvalue;
+        T result = parameters.ghostvalue;
         int inputstart = outputindex - (parameters.filtersize/2)-1;
         for (int filterindex = 0; filterindex < parameters.filtersize; filterindex++) {
             int inputindex = inputstart + filterindex;
@@ -56,16 +59,21 @@ __global__ void NaiveConvolution(KernelParameters parameters){
     }
 }
 
-__global__ void ConstantConvolution(KernelParameters parameters){
+template<class T = int>
+__global__ void ConstantConvolution(KernelParameters<T> parameters){
     
 }
 
-__global__ void SharedConvolution(KernelParameters parameters){
+template<class T = int>
+__global__ void SharedConvolution(KernelParameters<T> parameters){
     
 }
 
-typedef void(*ConvolutionCudaKernel)(KernelParameters);
-const std::vector<ConvolutionCudaKernel> cudaKernels{ 
+template <class T>
+using ConvolutionCudaKernel = void(*)(KernelParameters<T>);
+
+template <class T>
+const std::vector<ConvolutionCudaKernel<T>> cudaKernels{ 
     NaiveConvolution, ConstantConvolution, SharedConvolution 
 };
 
@@ -81,7 +89,8 @@ int CalculateOutputSize(int inputsize, int filtersize){
     return inputsize+ filtersize-1;
 }
 
-Result CpuPerformConvolution(const std::vector<int>& input, const std::vector<int>& filter){
+/*
+Result<T> CpuPerformConvolution(const std::vector<int>& input, const std::vector<int>& filter){
     std::vector<int> output(CalculateOutputSize(input.size(), filter.size()));
 
     bool isFilterSymmetric = isSymmetric(filter);
@@ -96,25 +105,26 @@ Result CpuPerformConvolution(const std::vector<int>& input, const std::vector<in
 
     Result r = {0, input};
     return std::move(r);
-}
+}*/
 
-Result CudaPerformConvolution(const std::vector<int>& input, const std::vector<int>& filter, ConvolutionCudaKernel algorithm){
-    int* device_input, *device_filter, *device_output; Result result;
-    std::vector<int> output(CalculateOutputSize(input.size(), filter.size()));
+template<class T = int>
+Result<T> CudaPerformConvolution(const std::vector<T>& input, const std::vector<T>& filter, ConvolutionCudaKernel<T> algorithm){
+    T* device_input, *device_filter, *device_output; Result<T> result;
+    std::vector<T> output(CalculateOutputSize(input.size(), filter.size()));
 
-    gpuErrchk(cudaMalloc((void **)&device_input,   input.size()*sizeof(int)));
-    gpuErrchk(cudaMalloc((void **)&device_filter, filter.size()*sizeof(int)));
-    gpuErrchk(cudaMalloc((void **)&device_output, output.size()*sizeof(int)));
+    gpuErrchk(cudaMalloc((void **)&device_input,   input.size()*sizeof(T)));
+    gpuErrchk(cudaMalloc((void **)&device_filter, filter.size()*sizeof(T)));
+    gpuErrchk(cudaMalloc((void **)&device_output, output.size()*sizeof(T)));
 
-    gpuErrchk(cudaMemcpy(device_input,   input.data(),  input.size()*sizeof(int), cudaMemcpyHostToDevice));
-    gpuErrchk(cudaMemcpy(device_filter, filter.data(), filter.size()*sizeof(int), cudaMemcpyHostToDevice));
-    gpuErrchk(cudaMemcpy(device_output, output.data(), output.size()*sizeof(int), cudaMemcpyHostToDevice));
+    gpuErrchk(cudaMemcpy(device_input,   input.data(),  input.size()*sizeof(T), cudaMemcpyHostToDevice));
+    gpuErrchk(cudaMemcpy(device_filter, filter.data(), filter.size()*sizeof(T), cudaMemcpyHostToDevice));
+    gpuErrchk(cudaMemcpy(device_output, output.data(), output.size()*sizeof(T), cudaMemcpyHostToDevice));
 
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);    
 
-    KernelParameters parameters = { (int*)device_input, (int)input.size(), (int*)device_filter, (int)filter.size(), (int*)device_output, (int)output.size() };
+    KernelParameters<T> parameters = { (T*)device_input, (int)input.size(), (T*)device_filter, (int)filter.size(), (T*)device_output, (int)output.size() };
     cudaEventRecord(start);
     algorithm<<< output.size() / startup.threadsperblock+1, startup.threadsperblock>>>(parameters);
     gpuErrchk(cudaEventRecord(stop));
@@ -122,7 +132,7 @@ Result CudaPerformConvolution(const std::vector<int>& input, const std::vector<i
     gpuErrchk(cudaEventSynchronize(stop));
     gpuErrchk(cudaEventElapsedTime(&result.executiontime, start, stop));
 
-    gpuErrchk(cudaMemcpy(output.data(), device_output, output.size()*sizeof(int), cudaMemcpyDeviceToHost));
+    gpuErrchk(cudaMemcpy(output.data(), device_output, output.size()*sizeof(T), cudaMemcpyDeviceToHost));
     gpuErrchk(cudaFree(device_input)); gpuErrchk(cudaFree(device_filter)); gpuErrchk(cudaFree(device_output));
 
     result.output = std::move(output);
@@ -148,11 +158,15 @@ void printall(const std::vector<int>& vec) {
 
 /*Tests the example in the lecture slides*/
 void TestLectureExample(){
-    std::vector<int> input{1,4,2,5};
-    std::vector<int> filter{1,4,3};
+    //std::vector<int> input{1,4,2,5};
+    //std::vector<int> filter{1,4,3};
+    //Result<int> r = CudaPerformConvolution(input, filter, NaiveConvolution);
+    //assert(std::equal(r.output.begin(), r.output.end(), std::vector<int>{ 3, 16, 23, 27, 22, 5 }.begin() ));
 
-    Result r = CudaPerformConvolution(input, filter, NaiveConvolution);
-    assert(std::equal(r.output.begin(), r.output.end(), std::vector<int>{ 3, 16, 23, 27, 22, 5 }.begin() ));
+    std::vector<float> inputf{1.,4.,2.,5.};
+    std::vector<float> filterf{1.,4.,3.};
+    Result<float> r1 = CudaPerformConvolution(inputf, filterf, NaiveConvolution);
+    assert(std::equal(r1.output.begin(), r1.output.end(), std::vector<float>{ 3., 16., 23., 27., 22., 5. }.begin() ));
 
 }
 
@@ -166,10 +180,10 @@ int main(int argc, char** argv){
     std::vector<int> filter(101);
     std::generate(filter.begin(), filter.end(), []() { static int x = -1; x++;return x; });
 
-    Result r = CpuPerformConvolution(input, filter);
+    //Result r = CpuPerformConvolution(input, filter);
 
-    for (ConvolutionCudaKernel cudakern : cudaKernels){
-        Result r1 = CudaPerformConvolution(input, filter, cudakern);
+    for (ConvolutionCudaKernel<int> cudakern : cudaKernels<int>){
+        Result<int> r1 = CudaPerformConvolution(input, filter, cudakern);
         std::cout << "Kernel Executed in: " << r1.executiontime << " milliseconds" << std::endl;
         printsome(r1.output, 10);
         std::cout << std::endl << std::endl;
