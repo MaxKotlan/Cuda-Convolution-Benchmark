@@ -39,7 +39,8 @@ struct KernelParameters {
 };
 
 __global__ void NaiveConvolution(KernelParameters parameters){
-
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    
 }
 
 __global__ void ConstantConvolution(KernelParameters parameters){
@@ -89,7 +90,7 @@ Result CpuPerformConvolution(const std::vector<int>& input, const std::vector<in
 }
 
 Result CudaPerformConvolution(const std::vector<int>& input, const std::vector<int>& kernel, ConvolutionCudaKernel algorithm){
-    int* device_input, *device_kernel, *device_output;
+    int* device_input, *device_kernel, *device_output; Result result;
     std::vector<int> output(CalculateOutputSize(input.size(), kernel.size()));
 
     gpuErrchk(cudaMalloc((void **)&device_input,   input.size()*sizeof(int)));
@@ -104,25 +105,24 @@ Result CudaPerformConvolution(const std::vector<int>& input, const std::vector<i
     cudaEventCreate(&start);
     cudaEventCreate(&stop);    
 
-    KernelParameters parameters = { device_input, input.size(), device_kernel, kernel.size(), device_output, output.size() };
+    KernelParameters parameters = { (int*)device_input, (int)input.size(), (int*)device_kernel, (int)kernel.size(), (int*)device_output, (int)output.size() };
     algorithm<<< output.size() / startup.threadsperblock+1, startup.threadsperblock>>>(parameters);
 
     cudaEventRecord(stop);
     gpuErrchk(cudaEventSynchronize(stop));
-    float milliseconds = 0;
-    cudaEventElapsedTime(&milliseconds, start, stop);
+    cudaEventElapsedTime(&result.executiontime, start, stop);
 
     gpuErrchk(cudaMemcpy(output.data(), device_output, output.size()*sizeof(int), cudaMemcpyDeviceToHost));
     gpuErrchk(cudaFree(device_input)); gpuErrchk(cudaFree(device_kernel)); gpuErrchk(cudaFree(device_output));
 
-    Result r = {milliseconds, output};
-    return std::move(r);
+    result.output = std::move(output);
+    return std::move(result);
 }
 
 int main(int argc, char** argv){
     int inputsize = 512;
     std::vector<int> input(inputsize);
-    std::generate(input.begin(), input.end(), []() { return rand() % 100; });
+    std::generate(input.begin(), input.end(), []() { static int x = -1; x++;return x; });
     std::vector<int> filter{1,2,3,2,1};
 
     Result r = CpuPerformConvolution(input, filter);
