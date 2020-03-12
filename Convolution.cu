@@ -3,6 +3,7 @@
 #include <time.h>
 #include <vector>
 #include <algorithm>
+#include <assert.h>
 
 #define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
@@ -128,26 +129,49 @@ Result CudaPerformConvolution(const std::vector<int>& input, const std::vector<i
     return std::move(result);
 }
 
+/*Prints a few elements from the front and a few from the back*/
+void printsome(const std::vector<int>& vec, int range){
+    int rr = (vec.size()*2 > range) ? range : vec.size();
+    int br = (vec.size()*2 > range) ? vec.size() - range/2 : vec.size();
+    for (int i = 0; i < rr; i++)
+        std::cout << vec[i] << ", ";
+    std::cout << "... ";
+    for (int i = br; i < vec.size(); i++)
+        std::cout << vec[i] << ", ";
+    std::cout << std::endl;
+}
+
+void printall(const std::vector<int>& vec) {
+    for (auto e : vec)
+        std::cout << e << ", ";
+}
+
+/*Tests the example in the lecture slides*/
+void TestLectureExample(){
+    std::vector<int> input{1,4,2,5};
+    std::vector<int> filter{1,4,3};
+
+    Result r = CudaPerformConvolution(input, filter, NaiveConvolution);
+    assert(std::equal(r.output.begin(), r.output.end(), std::vector<int>{ 3, 16, 23, 27, 22, 5 }.begin() ));
+
+}
+
 int main(int argc, char** argv){
-    //int inputsize = 1024*1024;
-    std::vector<int> input{1,4,2,5,235,234,1};//(inputsize);
-    //std::generate(input.begin(), input.end(), []() { static int x = -1; x++;return x; });
-    std::vector<int> filter{1,4,3,1};
-    //std::generate(filter.begin(), filter.end(), []() { static int x = -1; x++;return x; });
+
+    TestLectureExample();
+
+    int inputsize = 1024*1024;
+    std::vector<int> input(inputsize);//(inputsize);
+    std::generate(input.begin(), input.end(), []() { static int x = 0; x++;return x; });
+    std::vector<int> filter(101);
+    std::generate(filter.begin(), filter.end(), []() { static int x = -1; x++;return x; });
 
     Result r = CpuPerformConvolution(input, filter);
 
     for (ConvolutionCudaKernel cudakern : cudaKernels){
         Result r1 = CudaPerformConvolution(input, filter, cudakern);
         std::cout << "Kernel Executed in: " << r1.executiontime << " milliseconds" << std::endl;
-        //for (int i = 0; i < 10; i++)
-        //    std::cout << r1.output[i] << ", ";
-        //std::cout << "... ";
-        //for (int i = r1.output.size()-5; i < r1.output.size(); i++)
-        //    std::cout << r1.output[i] << ", ";
-        for (auto e : r1.output){
-            std::cout << e << ", ";
-        }
+        printsome(r1.output, 10);
         std::cout << std::endl << std::endl;
     }
 }
