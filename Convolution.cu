@@ -186,7 +186,13 @@ int main(int argc, char** argv){
 
     TestLectureExample();
 
-
+    {
+        std::vector<float> input{1,4,2,5};
+        std::vector<float> filter{1,4,3,4};
+        Result<float> r = CudaPerformConvolution(input, filter, NaiveConvolution);
+        std::cout << "Testing: "; printall(input); std::cout << std::endl;
+        std::cout << " Result: "; printall(r.output); std::cout << std::endl;
+    }
     {
         int inputsize = 1024*1024*256;
         std::vector<int> input(inputsize);//(inputsize);
