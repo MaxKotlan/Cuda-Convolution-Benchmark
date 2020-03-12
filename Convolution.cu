@@ -1,8 +1,9 @@
-#include <iostream>
-#include <vector>
-#include <algorithm>
-#include <functional>
+#include <stdio.h>
 #include <cuda.h>
+#include <time.h>
+#include <vector>
+#include <functional>
+#include <algorithm>
 
 #define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
@@ -14,8 +15,8 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
    }
 }
 
-typedef struct Startup{
-    unsigned int threadsperblock = 1024;
+struct Startup{
+    int threadsperblock = 1024;
 } startup;
 
 struct Result {
@@ -41,8 +42,8 @@ __global__ void SharedConvolution(int* data, int dataSize, int* kernel, int kern
     
 }
 
-typedef std::function<void(int*,int,int*,int,int*,int)> ConvolutionCudaKernel;
-std::vector<ConvolutionCudaKernel> cudaKernels{ 
+typedef void(*ConvolutionCudaKernel)(int *, int, int *, int, int *, int);
+const std::vector<ConvolutionCudaKernel> cudaKernels{ 
     NaiveConvolution, ConstantConvolution, SharedConvolution 
 };
 
@@ -79,30 +80,39 @@ Result CpuPerformConvolution(const std::vector<int>& input, const std::vector<in
     return std::move(r);
 }
 
-Result CudaPerformConvolution(const std::vector<int>& input, const std::vector<int>& kernel, ConvolutionCudaKernel cudakernel){
+Result CudaPerformConvolution(const std::vector<int>& input, const std::vector<int>& kernel, ConvolutionCudaKernel algorithm){
     int* device_input, *device_kernel, *device_output;
     std::vector<int> output(CalculateOutputSize(input.size(), kernel.size()));
 
-    gpuErrchk(cudaMalloc((void **)&device_input,   input.size()));
-    gpuErrchk(cudaMalloc((void **)&device_kernel, kernel.size()));
-    gpuErrchk(cudaMalloc((void **)&device_output, output.size()));
+    gpuErrchk(cudaMalloc((void **)&device_input,   input.size()*sizeof(int)));
+    gpuErrchk(cudaMalloc((void **)&device_kernel, kernel.size()*sizeof(int)));
+    gpuErrchk(cudaMalloc((void **)&device_output, output.size()*sizeof(int)));
 
-    gpuErrchk(cudaMemcpy(device_input,   input.data(),  input.size(), cudaMemcpyHostToDevice));
-    gpuErrchk(cudaMemcpy(device_kernel, kernel.data(), kernel.size(), cudaMemcpyHostToDevice));
-    gpuErrchk(cudaMemcpy(device_output, output.data(), output.size(), cudaMemcpyHostToDevice));
+    gpuErrchk(cudaMemcpy(device_input,   input.data(),  input.size()*sizeof(int), cudaMemcpyHostToDevice));
+    gpuErrchk(cudaMemcpy(device_kernel, kernel.data(), kernel.size()*sizeof(int), cudaMemcpyHostToDevice));
+    gpuErrchk(cudaMemcpy(device_output, output.data(), output.size()*sizeof(int), cudaMemcpyHostToDevice));
 
-    unsigned int threadsneeded = 0;
-    //cudakernel<<<output.size() / threadsperblock+1, threadsperblock>>>(device_input, device_kernel, device_output)
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);    
 
-    Result r = {0, input};
+    algorithm<<< output.size() / startup.threadsperblock+1, startup.threadsperblock>>>(device_input, input.size(), device_kernel, kernel.size(), device_output, output.size());
+
+    cudaEventRecord(stop);
+    gpuErrchk(cudaEventSynchronize(stop));
+    float milliseconds = 0;
+    cudaEventElapsedTime(&milliseconds, start, stop);
+
+    Result r = {milliseconds, output};
     return std::move(r);
 }
 
 int main(int argc, char** argv){
     
-    int inputsize = 1024; int kernelsize = 3;
+    int inputsize = 1024;
     std::vector<int> input(inputsize);
     std::generate(input.begin(), input.end(), []() { return rand() % 100; });
     std::vector<int> kernel{1,2,3,2,1};
     Result r = CpuPerformConvolution(input, kernel);
+    Result r1 = CudaPerformConvolution(input, kernel, NaiveConvolution);
 }
