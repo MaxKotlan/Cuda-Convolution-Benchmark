@@ -76,11 +76,19 @@ __global__ void SharedConvolution(KernelParameters<T> parameters){
 }
 
 template <class T>
-using ConvolutionCudaKernel = void(*)(KernelParameters<T>);
+using ConvolutionCudaKernelFunction = void(*)(KernelParameters<T>);
+
+template <class T>
+struct ConvolutionCudaKernel{
+    std::string label;
+    ConvolutionCudaKernelFunction<T> kernelfunction;
+};
 
 template <class T>
 const std::vector<ConvolutionCudaKernel<T>> CudaKernels{ 
-    NaiveConvolution<T>, ConstantConvolution<T>, SharedConvolution<T> 
+    { "Naive Convolution",    NaiveConvolution<T>    }, 
+    { "Constant Convolution", ConstantConvolution<T> }, 
+    { "Shared Convolution",   SharedConvolution<T>   }
 };
 
 template <class T>
@@ -120,7 +128,7 @@ Result<T> CpuPerformConvolution(const std::vector<T>& input, const std::vector<T
 }
 
 template<class T = int>
-Result<T> CudaPerformConvolution(const std::vector<T>& input, const std::vector<T>& filter, ConvolutionCudaKernel<T> algorithm){
+Result<T> CudaPerformConvolution(const std::vector<T>& input, const std::vector<T>& filter, ConvolutionCudaKernelFunction<T> algorithm){
     T* device_input, *device_filter, *device_output; Result<T> result;
     std::vector<T> output(CalculateOutputSize(input.size(), filter.size()));
 
@@ -172,19 +180,27 @@ void printall(const std::vector<T>& vec) {
 
 /*Test Visually*/
 template<class T = int>
-Result<T> Test(const std::vector<T>& input, const std::vector<T>& filter){
-    std::cout << "Testing Input: "; printsome(input,10);  std::cout << std::endl;
-    std::cout << "With Filter:   "; printsome(filter,10); std::cout << std::endl;
-    Result<T> r = CudaPerformConvolution(input, filter, NaiveConvolution);
+Result<T> Test(const std::vector<T>& input, const std::vector<T>& filter, ConvolutionCudaKernel<T> kern){
+    std::cout << "\tType: " << typeid(T).name() << " Kernel: " << kern.label;
+    std::cout << " Input: "; printsome(input,10);
+    std::cout << " Filter:   "; printsome(filter,10);
+    Result<T> r = CudaPerformConvolution(input, filter, kern.kernelfunction);
     std::cout << "Result Vector: "; printsome(r.output,10); std::cout << std::endl;
     return std::move(r);
 }
 
 /*Test and Assert*/
 template<class T = int>
-void Test(const std::vector<T>& input, const std::vector<T>& filter, const std::vector<T>& expected){
-    Result<T> r = Test(input, filter);
-    assert(std::equal(r.output.begin(), r.output.end(), expected.begin() ));
+void Test(const std::vector<T>& input, const std::vector<T>& filter, const std::vector<T>& expected, ConvolutionCudaKernel<T> kern){
+    Result<T> r = Test(input, filter, kern);
+    //assert(std::equal(r.output.begin(), r.output.end(), expected.begin() ));
+}
+
+/*Test and Assert*/
+template<class T = int>
+void TestAllKernels(const std::vector<T>& input, const std::vector<T>& filter, const std::vector<T>& expected){
+    for (ConvolutionCudaKernel<T> kern : CudaKernels<T>)
+        Test(input, filter, expected, kern);
 }
 
 #endif
