@@ -85,10 +85,10 @@ struct ConvolutionCudaKernel{
 };
 
 template <class T>
-const std::vector<ConvolutionCudaKernel<T>> CudaKernels{ 
-    { "Naive Convolution",    NaiveConvolution<T>    }, 
-    { "Constant Convolution", ConstantConvolution<T> }, 
-    { "Shared Convolution",   SharedConvolution<T>   }
+const static std::vector<ConvolutionCudaKernel<T>> CudaKernels{ 
+   { "Naive Convolution",    NaiveConvolution<T>    }, 
+   { "Constant Convolution", ConstantConvolution<T> }, 
+   { "Shared Convolution",   SharedConvolution<T>   }
 };
 
 template <class T>
@@ -199,8 +199,9 @@ void Test(const std::vector<T>& input, const std::vector<T>& filter, const std::
 /*Test and Assert*/
 template<class T = int>
 void TestAllKernels(const std::vector<T>& input, const std::vector<T>& filter, const std::vector<T>& expected){
-    for (ConvolutionCudaKernel<T> kern : CudaKernels<T>)
-        Test(input, filter, expected, kern);
+    for (int i = 0; i < CudaKernels<T>.size(); i++){
+        Test(input, filter, expected, CudaKernels<T>[i]);
+    }
 }
 
 #endif
