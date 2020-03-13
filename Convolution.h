@@ -208,4 +208,13 @@ void TestAllKernels(const std::vector<T>& input, const std::vector<T>& filter, c
     }
 }
 
+/*Just Test*/
+template<class T = int>
+void TestAllKernels(const std::vector<T>& input, const std::vector<T>& filter){
+    for (auto kernel : getKernels<T>()){
+        Test(input, filter, kernel);
+    }
+}
+
+
 #endif
