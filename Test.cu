@@ -22,6 +22,8 @@ void RunTests(){
         /*This fails. I guess because the mask is even..*/
         //Test(std::vector<float>{1,1}, std::vector<float>{1,1}, std::vector<float>{1,1,1});
         //Test(std::vector<float>{1,1}, std::vector<float>{1,1}, std::vector<float>{1,2,1});
+        TestAllKernels(std::vector<float>{1,1,1,1,1,1,1}, std::vector<float>{1}, std::vector<float>{1,1,1,1,1,1,1});
+
     printFooter();
     printHeader("Lecture Slide");
     {
