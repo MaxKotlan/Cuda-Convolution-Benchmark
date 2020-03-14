@@ -166,12 +166,12 @@ Result<T> CudaPerformConvolution(const std::vector<T>& input, const std::vector<
 /*Prints a few elements from the front and a few from the back*/
 template<class T = int>
 void printsome(const std::vector<T>& vec, int range){
-    bool isSmallVector = vec.size() > range;
-    int rr = isSmallVector ? range : vec.size();
-    int br = isSmallVector ? vec.size() - range/2 : vec.size();
+    bool isLargeVector = vec.size() > range;
+    int rr = isLargeVector ? range : vec.size();
+    int br = isLargeVector ? vec.size() - range/2 : vec.size();
     for (int i = 0; i < rr; i++)
         std::cout << vec[i] << ", ";
-    if (!isSmallVector) std::cout << "... ";
+    if (isLargeVector) std::cout << "..., ";
     for (int i = br; i < vec.size(); i++)
         std::cout << vec[i] << ", ";
 }
@@ -212,7 +212,8 @@ void TestAllKernels(const std::vector<T>& input, const std::vector<T>& filter, c
 template<class T = int>
 void TestAllKernels(const std::vector<T>& input, const std::vector<T>& filter){
     for (auto kernel : getKernels<T>()){
-        Test(input, filter, kernel);
+        if (kernel.label == "Naive Convolution")
+            Test(input, filter, kernel);
     }
 }
 
