@@ -11,7 +11,7 @@ void printFooter(){ std::cout << std::endl; }
 void RunTests(){
     /*Testing Convolution Example from Slide as an Integr and a float*/
     /*Input, Filter, Expected Value*/
-
+    
     printHeader("Trivial");
         TestAllKernels(std::vector<int>  {0}, std::vector<int>  {0}, std::vector<int>  {0});
         TestAllKernels(std::vector<float>{0}, std::vector<float>{0}, std::vector<float>{0});
@@ -31,6 +31,11 @@ void RunTests(){
         std::cout << "\tTesting cpu version: ";
         Result<int> cpures = CpuPerformConvolution(std::vector<int>  {1,4,2,5}, std::vector<int>  {1,4,3});
         printsome(cpures.output, 10);
+    }
+    printFooter();
+    printHeader("Constant Memory Slide");
+    {
+        TestAllKernels<int, 3>(std::vector<int>  {1,4,2,5}, std::vector<int>  {1,4,3},   std::vector<int>  {3,16,23,27,22,5});
     }
     printFooter();
     printHeader("Fractional Example");

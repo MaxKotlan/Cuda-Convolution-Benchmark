@@ -25,7 +25,7 @@ typedef std::chrono::milliseconds ms;
 typedef std::chrono::duration<float> fsec;
 
 
-template<class T = int>
+template<class T = int, int constsize=0>
 struct Result {
     float executiontime;
     std::vector<T> output;
@@ -38,7 +38,7 @@ struct Result {
     }
 };
 
-template<class T = int>
+template<class T = int, int constsize=0>
 struct KernelParameters {
     T* input;
     int  inputsize;
@@ -49,7 +49,7 @@ struct KernelParameters {
     T  ghostvalue = (T)0;
 };
 
-template<class T = int>
+template<class T = int, int constsize=0>
 __global__ void NaiveConvolution(KernelParameters<T> parameters){
     int outputindex = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -65,37 +65,52 @@ __global__ void NaiveConvolution(KernelParameters<T> parameters){
     }
 }
 
-template<class T = int>
+template<class T = int, int constsize=1>
+__constant__ T constantmemory[constsize];
+
+template<class T = int, int constsize=0>
 __global__ void ConstantConvolution(KernelParameters<T> parameters){
-    
+    /*int outputindex = blockDim.x * blockIdx.x + threadIdx.x;
+
+    if (outputindex < parameters.outputsize){
+        T result = parameters.ghostvalue;
+        int inputstart = outputindex - (parameters.filtersize-1);
+        for (int filterindex = 0; filterindex < parameters.filtersize; filterindex++) {
+            int inputindex = inputstart + filterindex;
+            if (inputindex >= 0 && inputindex < parameters.inputsize)
+                result += parameters.input[inputindex] * constantmemory<T>[filterindex];
+        }
+        parameters.output[outputindex] = result;
+    }*/
 }
 
-template<class T = int>
+template<class T = int, int constsize=0>
 __global__ void SharedConvolution(KernelParameters<T> parameters){
     
 }
 
-template <class T>
+template <class T = int, int constsize=0>
 using ConvolutionCudaKernelFunction = void(*)(KernelParameters<T>);
 
-template <class T>
+template <class T = int, int constsize=0>
 struct ConvolutionCudaKernel{
     std::string label;
     ConvolutionCudaKernelFunction<T> kernelfunction;
+    bool usesconstantmemory;
 };
 
-template <class T>
+template <class T = int, int constsize=0>
 const std::vector<ConvolutionCudaKernel<T>> getKernels(){
     
     const static std::vector<ConvolutionCudaKernel<T>> kernels{
-        { "Naive Convolution",    NaiveConvolution<T>    }, 
-        //{ "Constant Convolution", ConstantConvolution<T> }, 
+        { "Naive Convolution",    NaiveConvolution<T>   ,  false }, 
+        { "Constant Convolution", ConstantConvolution<T>,  true  }, 
         //{ "Shared Convolution",   SharedConvolution<T>   }
     };
     return kernels;
 };
 
-template <class T>
+template <class T = int, int constsize=0>
 bool isSymmetric(const std::vector<T>& vec){
     for(int i = 0; i < vec.size()/2; i++)
         if (vec[i] != vec[vec.size()-1-i])
@@ -103,19 +118,19 @@ bool isSymmetric(const std::vector<T>& vec){
     return true;
 }
 
-template<class T = int>
+template<class T = int, int constsize=0>
 T CalculateOutputSize(T inputsize, T filtersize){
     return inputsize+ filtersize-1;
 }
 
-template<class T = int>
+template<class T = int, int constsize=0>
 Result<T> CpuPerformConvolution(const std::vector<T>& input, const std::vector<T>& filter){
     std::vector<T> output(CalculateOutputSize(input.size(), filter.size()));
 
     auto t0 = Time::now();
     for (int outputindex = 0; outputindex < output.size(); outputindex++){
         T result = 0;
-        int inputstart = outputindex - (filter.size()/2)-1;
+        int inputstart = outputindex - (filter.size()-1);
         for (int filterindex = 0; filterindex < filter.size(); filterindex++) {
             int inputindex = inputstart + filterindex;
             if (inputindex >= 0 && inputindex < output.size()-2)
@@ -131,18 +146,24 @@ Result<T> CpuPerformConvolution(const std::vector<T>& input, const std::vector<T
     return std::move(r);
 }
 
-template<class T = int>
-Result<T> CudaPerformConvolution(const std::vector<T>& input, const std::vector<T>& filter, ConvolutionCudaKernelFunction<T> algorithm){
-    T* device_input, *device_filter, *device_output; Result<T> result;
+template<class T = int, int constsize>
+Result<T> CudaPerformConvolution(const std::vector<T>& input, const std::vector<T>& filter, ConvolutionCudaKernel<T> kernelproperties){
+    T* device_input = nullptr, *device_filter = nullptr, *device_output = nullptr; Result<T> result;
     std::vector<T> output(CalculateOutputSize(input.size(), filter.size()));
 
     gpuErrchk(cudaMalloc((void **)&device_input,   input.size()*sizeof(T)));
-    gpuErrchk(cudaMalloc((void **)&device_filter, filter.size()*sizeof(T)));
     gpuErrchk(cudaMalloc((void **)&device_output, output.size()*sizeof(T)));
 
     gpuErrchk(cudaMemcpy(device_input,   input.data(),  input.size()*sizeof(T), cudaMemcpyHostToDevice));
-    gpuErrchk(cudaMemcpy(device_filter, filter.data(), filter.size()*sizeof(T), cudaMemcpyHostToDevice));
     gpuErrchk(cudaMemcpy(device_output, output.data(), output.size()*sizeof(T), cudaMemcpyHostToDevice));
+
+    if (constsize != 0){
+        gpuErrchk(cudaMemcpyToSymbol(constantmemory<T, constsize+1>, filter.data(), filter.size()));
+    } else {
+        gpuErrchk(cudaMalloc((void **)&device_filter, filter.size()*sizeof(T)));
+        gpuErrchk(cudaMemcpy(device_filter, filter.data(), filter.size()*sizeof(T), cudaMemcpyHostToDevice));
+    }
+
 
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
@@ -150,7 +171,7 @@ Result<T> CudaPerformConvolution(const std::vector<T>& input, const std::vector<
 
     KernelParameters<T> parameters = { (T*)device_input, (int)input.size(), (T*)device_filter, (int)filter.size(), (T*)device_output, (int)output.size() };
     gpuErrchk(cudaEventRecord(start));
-    algorithm<<< output.size()/1024+1, 1024>>>(parameters);
+    kernelproperties.kernelfunction<<< output.size()/1024+1, 1024>>>(parameters);
     gpuErrchk(cudaEventRecord(stop));
     
     gpuErrchk(cudaEventSynchronize(stop));
@@ -164,7 +185,7 @@ Result<T> CudaPerformConvolution(const std::vector<T>& input, const std::vector<
 }
 
 /*Prints a few elements from the front and a few from the back*/
-template<class T = int>
+template<class T = int, int constsize=0>
 void printsome(const std::vector<T>& vec, int range){
     bool isLargeVector = vec.size() > range;
     int rr = isLargeVector ? range : vec.size();
@@ -176,46 +197,48 @@ void printsome(const std::vector<T>& vec, int range){
         std::cout << vec[i] << ", ";
 }
 
-template<class T = int>
+template<class T = int, int constsize=0>
 void printall(const std::vector<T>& vec) {
     for (auto e : vec)
         std::cout << e << ", ";
 } 
 
 /*Test Visually*/
-template<class T = int>
+template<class T = int, int constsize>
 Result<T> Test(const std::vector<T>& input, const std::vector<T>& filter, ConvolutionCudaKernel<T> kern){
     std::cout << "\tType: " << typeid(T).name() << " Kernel: " << kern.label;
     std::cout << " Input: "; printsome(input,10);
     std::cout << " Filter:   "; printsome(filter,10);
-    Result<T> r = CudaPerformConvolution(input, filter, kern.kernelfunction);
+    Result<T> r = CudaPerformConvolution<T, constsize>(input, filter, kern);
     std::cout << "Result Vector: "; printsome(r.output,10); std::cout << std::endl;
     return std::move(r);
 }
 
 /*Test and Assert*/
-template<class T = int>
+template<class T = int, int constsize=0>
 void Test(const std::vector<T>& input, const std::vector<T>& filter, const std::vector<T>& expected, ConvolutionCudaKernel<T> kern){
-    Result<T> r = Test(input, filter, kern);
+    Result<T> r = Test<T, constsize>(input, filter, kern);
     assert(std::equal(r.output.begin(), r.output.end(), expected.begin() ));
 }
 
 /*Test and Assert*/
-template<class T = int>
+template<class T = int, int constsize=0>
 void TestAllKernels(const std::vector<T>& input, const std::vector<T>& filter, const std::vector<T>& expected){
     for (auto kernel : getKernels<T>()){
-        Test(input, filter, expected, kernel);
+        if ( constsize != 0 || !kernel.usesconstantmemory )
+            Test<T, constsize>(input, filter, expected, kernel);
     }
 }
 
 /*Just Test*/
-template<class T = int>
+template<class T = int, int constsize=0>
 void TestAllKernels(const std::vector<T>& input, const std::vector<T>& filter){
     for (auto kernel : getKernels<T>())
-        Test(input, filter, kernel);
+        if ( constsize != 0 || !kernel.usesconstantmemory )
+            Test<T, constsize>(input, filter, kernel);
 }
 
-template<class T = int>
+template<class T = int, int constsize=0>
 void savecsv(std::ostream out,const std::vector<T>& input, const std::vector<T>&filter){
     for (auto kernel : getKernels<T>())
         Test(input, filter, kernel);
