@@ -254,7 +254,7 @@ void printall(const std::vector<T>& vec) {
 /*Test Visually*/
 template<class T = int, int constsize>
 Result<T> Test(const std::vector<T>& input, const std::vector<T>& filter, const ConvolutionCudaKernel<T>& kern){
-    std::cout << "\tType: " << typeid(T).name() << " Kernel: " << kern.label;
+    std::cout << "\tType: " << kern.type << " Kernel: " << kern.label;
     std::cout << " Input: "; printsome(input,10);
     std::cout << " Filter:   "; printsome(filter,10);
     Result<T> r = CudaPerformConvolution<T, constsize>(input, filter, kern);
