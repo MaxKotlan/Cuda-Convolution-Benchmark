@@ -104,8 +104,8 @@ struct ConvolutionCudaKernel{
 template <class T = int, int constsize=0>
 const std::vector<ConvolutionCudaKernel<T>> getKernels(){
     /*For gcc compiler, print out full type name*/
-    std::string type = typeid(T).name() == "i" ? "int" : typeid(T).name();
-    type = typeid(T).name() == "f" ? "float" : typeid(T).name();
+    std::string type = std::string(typeid(T).name()) == "i" ? "int" : typeid(T).name();
+    type = std::string(typeid(T).name()) == "f" ? "float" : typeid(T).name();
     
     const static std::vector<ConvolutionCudaKernel<T>> kernels{
         { type, "Naive Convolution",    NaiveConvolution<T,constsize>   ,  false }, 
