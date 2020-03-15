@@ -16,11 +16,17 @@ void Benchmark(){
 
     /*Print Column Headers*/
     std::cout << "Input Size, Mask Size, ";
-    for (auto kernel : getKernels<int>())
+    ofs       << "Input Size, Mask Size, ";
+    for (auto kernel : getKernels<int>()){
         std::cout << kernel.type << " " << kernel.label << ", ";
-    for (auto kernel : getKernels<float>())
+        ofs       << kernel.type << " " << kernel.label << ", ";
+    }
+    for (auto kernel : getKernels<float>()){
         std::cout << kernel.type << " " << kernel.label << ", ";
+        ofs       << kernel.type << " " << kernel.label << ", ";
+    }
     std::cout << std::endl;
+    ofs       << std::endl;
 
     for (int i = 1; i < (1<<25); i*=2 ){
 
