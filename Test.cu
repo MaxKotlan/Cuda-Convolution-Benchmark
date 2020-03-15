@@ -16,12 +16,11 @@ void RunTests(){
         TestAllKernels(std::vector<int>  {0}, std::vector<int>  {0}, std::vector<int>  {0});
         TestAllKernels(std::vector<float>{0}, std::vector<float>{0}, std::vector<float>{0});
 
-        //TestAllKernels(std::vector<float>{0,0}, std::vector<float>{1,1,1}, std::vector<float>{0,0,0});
-        //TestAllKernels(std::vector<float>{1,1}, std::vector<float>{0,0,0}, std::vector<float>{0,0,0});
+        TestAllKernels(std::vector<float>{0,0}, std::vector<float>{1,1,1}, std::vector<float>{0,0,0,0});
+        TestAllKernels(std::vector<float>{1,1}, std::vector<float>{0,0,0}, std::vector<float>{0,0,0,0});
 
-        /*This fails. I guess because the mask is even..*/
-        //Test(std::vector<float>{1,1}, std::vector<float>{1,1}, std::vector<float>{1,1,1});
-        //Test(std::vector<float>{1,1}, std::vector<float>{1,1}, std::vector<float>{1,2,1});
+        TestAllKernels(std::vector<float>{1,1}, std::vector<float>{1,1}, std::vector<float>{1,2,1});
+        TestAllKernels(std::vector<float>{1,1}, std::vector<float>{1,2}, std::vector<float>{2,3,1});
         TestAllKernels(std::vector<float>{1,1,1,1,1,1,1}, std::vector<float>{1}, std::vector<float>{1,1,1,1,1,1,1});
 
     printFooter();
@@ -41,7 +40,7 @@ void RunTests(){
     printFooter();
     printHeader("Mask Larger than Input");
     {
-        TestAllKernels(std::vector<int>  {1,4,2,4,3}, std::vector<int>  {1,4,3,1,2,4,3},   std::vector<int>  {3,16,23,27,22,5});
+        TestAllKernels(std::vector<int>  {1,2,3}, std::vector<int>  {1,1,1,1,1,1,1},   std::vector<int>  {1, 3, 6, 6, 6, 6, 6, 5, 3});
         TestAllKernels(std::vector<float>{1,4,2,5}, std::vector<float>{1,4,3},   std::vector<float>{3,16,23,27,22,5});
     }
     printFooter();

@@ -197,7 +197,7 @@ Result<T> Test(const std::vector<T>& input, const std::vector<T>& filter, Convol
 template<class T = int>
 void Test(const std::vector<T>& input, const std::vector<T>& filter, const std::vector<T>& expected, ConvolutionCudaKernel<T> kern){
     Result<T> r = Test(input, filter, kern);
-    //assert(std::equal(r.output.begin(), r.output.end(), expected.begin() ));
+    assert(std::equal(r.output.begin(), r.output.end(), expected.begin() ));
 }
 
 /*Test and Assert*/
