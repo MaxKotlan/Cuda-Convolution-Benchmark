@@ -66,11 +66,11 @@ __global__ void NaiveConvolution(KernelParameters<T> parameters){
 }
 
 template<class T = int, int constsize=1>
-__constant__ T constantmemory[constsize];
+__constant__ T constantmemory[constsize*sizeof(T)];
 
-template<class T = int, int constsize=0>
+template<class T = int, int constsize=1>
 __global__ void ConstantConvolution(KernelParameters<T> parameters){
-    /*int outputindex = blockDim.x * blockIdx.x + threadIdx.x;
+    int outputindex = blockDim.x * blockIdx.x + threadIdx.x;
 
     if (outputindex < parameters.outputsize){
         T result = parameters.ghostvalue;
@@ -78,10 +78,10 @@ __global__ void ConstantConvolution(KernelParameters<T> parameters){
         for (int filterindex = 0; filterindex < parameters.filtersize; filterindex++) {
             int inputindex = inputstart + filterindex;
             if (inputindex >= 0 && inputindex < parameters.inputsize)
-                result += parameters.input[inputindex] * constantmemory<T>[filterindex];
+                result += parameters.input[inputindex] * constantmemory<T, constsize>[filterindex + 8];
         }
         parameters.output[outputindex] = result;
-    }*/
+    }
 }
 
 template<class T = int, int constsize=0>
@@ -133,7 +133,7 @@ Result<T> CpuPerformConvolution(const std::vector<T>& input, const std::vector<T
         int inputstart = outputindex - (filter.size()-1);
         for (int filterindex = 0; filterindex < filter.size(); filterindex++) {
             int inputindex = inputstart + filterindex;
-            if (inputindex >= 0 && inputindex < output.size()-2)
+            if (inputindex >= 0 && inputindex < input.size())
                 result += input[inputindex] * filter[filterindex];
         }
         output[outputindex] = result;
@@ -157,8 +157,8 @@ Result<T> CudaPerformConvolution(const std::vector<T>& input, const std::vector<
     gpuErrchk(cudaMemcpy(device_input,   input.data(),  input.size()*sizeof(T), cudaMemcpyHostToDevice));
     gpuErrchk(cudaMemcpy(device_output, output.data(), output.size()*sizeof(T), cudaMemcpyHostToDevice));
 
-    if (constsize != 0){
-        gpuErrchk(cudaMemcpyToSymbol(constantmemory<T, constsize+1>, filter.data(), filter.size()));
+    if (constsize != 0 && kernelproperties.usesconstantmemory){
+        gpuErrchk(cudaMemcpyToSymbol(constantmemory<T, constsize+1>, filter.data(), filter.size()*sizeof(T)));
     } else {
         gpuErrchk(cudaMalloc((void **)&device_filter, filter.size()*sizeof(T)));
         gpuErrchk(cudaMemcpy(device_filter, filter.data(), filter.size()*sizeof(T), cudaMemcpyHostToDevice));

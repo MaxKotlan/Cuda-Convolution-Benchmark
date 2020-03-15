@@ -35,7 +35,10 @@ void RunTests(){
     printFooter();
     printHeader("Constant Memory Slide");
     {
-        TestAllKernels<int, 3>(std::vector<int>  {1,4,2,5}, std::vector<int>  {1,4,3},   std::vector<int>  {3,16,23,27,22,5});
+        TestAllKernels<int, 3>(std::vector<int>  {1,1,1,1}, std::vector<int>  {1,2,3,4,5,6,7,8,9,10,11,12});//,   std::vector<int>  {3,16,23,27,22,5});
+        TestAllKernels<int, 3>(std::vector<int>  {1,1,1,1}, std::vector<int>  {1,2,3,4,5,6,7,8,9,10,11,12});//,   std::vector<int>  {3,16,23,27,22,5});
+        TestAllKernels<int, 3>(std::vector<int>  {1,1,1,1}, std::vector<int>  {10,11,12});//,   std::vector<int>  {3,16,23,27,22,5});
+
     }
     printFooter();
     printHeader("Fractional Example");

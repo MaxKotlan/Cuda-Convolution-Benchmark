@@ -1,2 +1,2 @@
 all:
-	nvcc -o Convolution Main.cu Test.cu Benchmark.cu
+	nvcc -g -o Convolution Main.cu Test.cu Benchmark.cu
