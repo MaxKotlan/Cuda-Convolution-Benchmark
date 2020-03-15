@@ -4,9 +4,19 @@
 
 bool enableconsole = true;
 
+void Help(){
+    std::cout << "Please enter a command. Current options are: "; std::cout << std::endl;
+    std::cout << "\thelp      - dispays this prompt" << std::endl;
+    std::cout << "\ttest      - runs unit tests" << std::endl;
+    std::cout << "\tbenchmark - runs benchmark mode" << std::endl;
+    std::cout << "\tquit      - exits console" << std::endl;
+    std::cout << std::endl;
+}
+
 void runCommand(std::string command){
     if (command == "test") { RunTests(); enableconsole = false; }
     if (command == "benchmark") {  Benchmark(); enableconsole = false; }
+    if (command == "help") { Help(); }
 }
 
 int main(int argc, char** argv){
@@ -19,11 +29,7 @@ int main(int argc, char** argv){
         }
     }
     if (enableconsole){
-        std::cout << "Please enter a command. Current options are: "; std::cout << std::endl;
-        std::cout << "\ttest      - runs unit tests" << std::endl;
-        std::cout << "\tbenchmark - runs benchmark mode" << std::endl;
-        std::cout << "\tquit      - exits console" << std::endl;
-        std::cout << std::endl;
+        Help();
         std::string x = "";
         do{
             runCommand(x);

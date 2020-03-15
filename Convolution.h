@@ -242,8 +242,10 @@ void TestAllKernels(const std::vector<T>& input, const std::vector<T>& filter){
 
 template<class T = int, int constsize=0>
 void CsvPerformanceRow(std::ofstream& fstream, bool print, bool endl,  const std::vector<T>& input, const std::vector<T>&filter){
-    if (print) std::cout << input.size() << ", " << filter.size() << ", ";
-    fstream << input.size() << ", " << filter.size() << ", ";
+    if (!endl){
+        if (print) std::cout << input.size() << ", " << filter.size() << ", ";
+        fstream << input.size() << ", " << filter.size() << ", ";
+    }
     for (auto kernel : getKernels<T>()) {
         if ( constsize != 0 || !kernel.usesconstantmemory ){
             Result<T> r = CudaPerformConvolution<T, constsize>(input, filter, kernel);
