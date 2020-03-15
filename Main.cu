@@ -5,6 +5,7 @@
 bool enableconsole = true;
 
 void Help(){
+    std::cout << std::endl;
     std::cout << "Please enter a command. Current options are: "; std::cout << std::endl;
     std::cout << "\thelp      - dispays this prompt" << std::endl;
     std::cout << "\ttest      - runs unit tests" << std::endl;

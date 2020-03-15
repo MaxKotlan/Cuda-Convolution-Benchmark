@@ -55,22 +55,22 @@ void RunTests(){
     printFooter();
     printHeader("Larger"); 
     {
-        int inputsize = 1024;
-        std::vector<float> input(inputsize);//(inputsize);
-        std::generate(input.begin(), input.end(), []() { static float x = 0.5; x++;return x; });
-        std::vector<float> filter(150);
-        std::generate(filter.begin(), filter.end(), []() { static float x = -1.; x++;return x; });
+        int inputsize = 1024; static int x = 0;
+        std::vector<int> input(inputsize);//(inputsize);
+        std::generate(input.begin(), input.end(), []() { x++; return x; }); x = -1;
+        std::vector<int> filter(150);
+        std::generate(filter.begin(), filter.end(), []() { x++;return x; }); x = 0;
         TestAllKernels(input, filter);
 
     }
     printFooter();
     printHeader("Very Large"); 
     {
-        int inputsize = 1024*1024;
+        int inputsize = 1024*1024*50; static float x = 0.5;
         std::vector<float> input(inputsize);//(inputsize);
-        std::generate(input.begin(), input.end(), []() { static float x = 0.5; x++;return x; });
+        std::generate(input.begin(), input.end(), []() {  x++;return x; });  x = -1;
         std::vector<float> filter(300);
-        std::generate(filter.begin(), filter.end(), []() { static float x = -1.; x++;return x; });
+        std::generate(filter.begin(), filter.end(), []() { x++;return x; }); x = 0;
         TestAllKernels(input, filter);
     }
     printFooter();
