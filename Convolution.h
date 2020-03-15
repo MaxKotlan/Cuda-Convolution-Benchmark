@@ -66,10 +66,10 @@ __global__ void NaiveConvolution(KernelParameters<T> parameters){
     }
 }
 
-template<class T = int, int constsize=1>
-__constant__ T constantmemory[constsize*sizeof(T)];
+template<class T = int, int constsize=0>
+__constant__ T constantmemory[constsize+1];
 
-template<class T = int, int constsize=1>
+template<class T = int, int constsize=0>
 __global__ void ConstantConvolution(KernelParameters<T> parameters){
     int outputindex = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -79,7 +79,7 @@ __global__ void ConstantConvolution(KernelParameters<T> parameters){
         for (int filterindex = 0; filterindex < parameters.filtersize; filterindex++) {
             int inputindex = inputstart + filterindex;
             if (inputindex >= 0 && inputindex < parameters.inputsize)
-                result += parameters.input[inputindex] * constantmemory<T, constsize>[filterindex + 8];
+                result += parameters.input[inputindex] * constantmemory<T, constsize>[filterindex];
         }
         parameters.output[outputindex] = result;
     }
@@ -96,7 +96,7 @@ using ConvolutionCudaKernelFunction = void(*)(KernelParameters<T>);
 template <class T = int, int constsize=0>
 struct ConvolutionCudaKernel{
     std::string label;
-    ConvolutionCudaKernelFunction<T> kernelfunction;
+    ConvolutionCudaKernelFunction<T, constsize> kernelfunction;
     bool usesconstantmemory;
 };
 
@@ -104,8 +104,8 @@ template <class T = int, int constsize=0>
 const std::vector<ConvolutionCudaKernel<T>> getKernels(){
     
     const static std::vector<ConvolutionCudaKernel<T>> kernels{
-        { "Naive Convolution",    NaiveConvolution<T>   ,  false }, 
-        { "Constant Convolution", ConstantConvolution<T>,  true  }, 
+        { "Naive Convolution",    NaiveConvolution<T,constsize>   ,  false }, 
+        { "Constant Convolution", ConstantConvolution<T,constsize>,  true  }, 
         //{ "Shared Convolution",   SharedConvolution<T>   }
     };
     return kernels;
@@ -159,8 +159,9 @@ Result<T> CudaPerformConvolution(const std::vector<T>& input, const std::vector<
     gpuErrchk(cudaMemcpy(device_output, output.data(), output.size()*sizeof(T), cudaMemcpyHostToDevice));
 
     if (constsize != 0 && kernelproperties.usesconstantmemory){
-        gpuErrchk(cudaMemcpyToSymbol(constantmemory<T, constsize+1>, filter.data(), filter.size()*sizeof(T)));
-    } else {
+        gpuErrchk(cudaMemcpyToSymbol(constantmemory<T, constsize>, filter.data(), filter.size()*sizeof(T)));
+    } else 
+    {
         gpuErrchk(cudaMalloc((void **)&device_filter, filter.size()*sizeof(T)));
         gpuErrchk(cudaMemcpy(device_filter, filter.data(), filter.size()*sizeof(T), cudaMemcpyHostToDevice));
     }
@@ -225,7 +226,7 @@ void Test(const std::vector<T>& input, const std::vector<T>& filter, const std::
 /*Test and Assert*/
 template<class T = int, int constsize=0>
 void TestAllKernels(const std::vector<T>& input, const std::vector<T>& filter, const std::vector<T>& expected){
-    for (auto kernel : getKernels<T>()){
+    for (auto kernel : getKernels<T, constsize>()){
         if ( constsize != 0 || !kernel.usesconstantmemory )
             Test<T, constsize>(input, filter, expected, kernel);
     }
@@ -234,7 +235,7 @@ void TestAllKernels(const std::vector<T>& input, const std::vector<T>& filter, c
 /*Just Test*/
 template<class T = int, int constsize=0>
 void TestAllKernels(const std::vector<T>& input, const std::vector<T>& filter){
-    for (auto kernel : getKernels<T>())
+    for (auto kernel : getKernels<T, constsize>())
         if ( constsize != 0 || !kernel.usesconstantmemory )
             Test<T, constsize>(input, filter, kernel);
 }

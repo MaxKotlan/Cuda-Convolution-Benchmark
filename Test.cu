@@ -36,8 +36,8 @@ void RunTests(){
     printFooter();
     printHeader("Constant Memory Slide");
     {
-        TestAllKernels<int, 3>(std::vector<int>  {1,1,1,1}, std::vector<int>  {1,2,3,4,5,6,7,8,9,10,11,12});//,   std::vector<int>  {3,16,23,27,22,5});
-        TestAllKernels<int, 3>(std::vector<int>  {1,1,1,1}, std::vector<int>  {1,2,3,4,5,6,7,8,9,10,11,12});//,   std::vector<int>  {3,16,23,27,22,5});
+        TestAllKernels<int, 12>(std::vector<int>  {1,1,1,1}, std::vector<int>  {1,2,3,4,5,6,7,8,9,10,11,12});//,   std::vector<int>  {3,16,23,27,22,5});
+        TestAllKernels<int, 12>(std::vector<int>  {1,1,1,1}, std::vector<int>  {1,2,3,4,5,6,7,8,9,10,11,12});//,   std::vector<int>  {3,16,23,27,22,5});
         TestAllKernels<int, 3>(std::vector<int>  {1,1,1,1}, std::vector<int>  {10,11,12});//,   std::vector<int>  {3,16,23,27,22,5});
 
     }
@@ -66,7 +66,7 @@ void RunTests(){
     printFooter();
     printHeader("Very Large"); 
     {
-        int inputsize = 1024*1024*256;
+        int inputsize = 1024*1024;
         std::vector<float> input(inputsize);//(inputsize);
         std::generate(input.begin(), input.end(), []() { static float x = 0.5; x++;return x; });
         std::vector<float> filter(300);
