@@ -94,6 +94,7 @@ __global__ void SharedConvolution(KernelParameters<T> parameters){
     int outputindex = blockDim.x * blockIdx.x + threadIdx.x;
     if (outputindex < parameters.outputsize){
 
+        if (outputindex < parameters.inputsize)
         sharedinput<T>[threadIdx.x] = parameters.input[outputindex];
         __syncthreads();
 
@@ -115,6 +116,7 @@ __global__ void SharedandConstantConvolution(KernelParameters<T> parameters){
     int outputindex = blockDim.x * blockIdx.x + threadIdx.x;
     if (outputindex < parameters.outputsize){
 
+        if (outputindex < parameters.inputsize)
         sharedinput<T>[threadIdx.x] = parameters.input[outputindex];
         __syncthreads();
 
