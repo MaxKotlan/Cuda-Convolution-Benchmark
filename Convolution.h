@@ -241,7 +241,7 @@ void TestAllKernels(const std::vector<T>& input, const std::vector<T>& filter){
 }
 
 template<class T = int, int constsize=0>
-void CsvPerformanceRow(std::ofstream& fstream, bool print, const std::vector<T>& input, const std::vector<T>&filter){
+void CsvPerformanceRow(std::ofstream& fstream, bool print, bool endl,  const std::vector<T>& input, const std::vector<T>&filter){
     if (print) std::cout << input.size() << ", " << filter.size() << ", ";
     fstream << input.size() << ", " << filter.size() << ", ";
     for (auto kernel : getKernels<T>()) {
@@ -252,8 +252,10 @@ void CsvPerformanceRow(std::ofstream& fstream, bool print, const std::vector<T>&
             fstream << typeid(T).name() << ", " << kernel.label << ", " << r.executiontime << ", ";
         }
     }
-    if (print) std::cout << std::endl;
-    fstream << std::endl;
+    if (endl){
+        if (print) std::cout << std::endl;
+        fstream << std::endl;
+    }
 }
 
 #endif
