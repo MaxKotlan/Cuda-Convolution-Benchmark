@@ -55,10 +55,10 @@ __global__ void NaiveConvolution(KernelParameters<T> parameters){
 
     if (outputindex < parameters.outputsize){
         T result = parameters.ghostvalue;
-        int inputstart = outputindex - (parameters.filtersize/2)-1;
+        int inputstart = outputindex - (parameters.filtersize-1);
         for (int filterindex = 0; filterindex < parameters.filtersize; filterindex++) {
             int inputindex = inputstart + filterindex;
-            if (inputindex >= 0 && inputindex < parameters.outputsize-2)
+            if (inputindex >= 0 && inputindex < inputindex < parameters.inputsize)
                 result += parameters.input[inputindex] * parameters.filter[filterindex];
         }
         parameters.output[outputindex] = result;
@@ -89,8 +89,8 @@ const std::vector<ConvolutionCudaKernel<T>> getKernels(){
     
     const static std::vector<ConvolutionCudaKernel<T>> kernels{
         { "Naive Convolution",    NaiveConvolution<T>    }, 
-        { "Constant Convolution", ConstantConvolution<T> }, 
-        { "Shared Convolution",   SharedConvolution<T>   }
+        //{ "Constant Convolution", ConstantConvolution<T> }, 
+        //{ "Shared Convolution",   SharedConvolution<T>   }
     };
     return kernels;
 };
@@ -149,8 +149,8 @@ Result<T> CudaPerformConvolution(const std::vector<T>& input, const std::vector<
     cudaEventCreate(&stop);    
 
     KernelParameters<T> parameters = { (T*)device_input, (int)input.size(), (T*)device_filter, (int)filter.size(), (T*)device_output, (int)output.size() };
-    cudaEventRecord(start);
-    algorithm<<< output.size() / 1024+1, 1024>>>(parameters);
+    gpuErrchk(cudaEventRecord(start));
+    algorithm<<< output.size()/1024+1, 1024>>>(parameters);
     gpuErrchk(cudaEventRecord(stop));
     
     gpuErrchk(cudaEventSynchronize(stop));
@@ -211,11 +211,14 @@ void TestAllKernels(const std::vector<T>& input, const std::vector<T>& filter, c
 /*Just Test*/
 template<class T = int>
 void TestAllKernels(const std::vector<T>& input, const std::vector<T>& filter){
-    for (auto kernel : getKernels<T>()){
-        if (kernel.label == "Naive Convolution")
-            Test(input, filter, kernel);
-    }
+    for (auto kernel : getKernels<T>())
+        Test(input, filter, kernel);
 }
 
+template<class T = int>
+void savecsv(std::ostream out,const std::vector<T>& input, const std::vector<T>&mask){
+    for (auto kernel : getKernels<T>())
+        Test(input, filter, kernel);
+}
 
 #endif
