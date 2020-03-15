@@ -58,7 +58,7 @@ __global__ void NaiveConvolution(KernelParameters<T> parameters){
         int inputstart = outputindex - (parameters.filtersize-1);
         for (int filterindex = 0; filterindex < parameters.filtersize; filterindex++) {
             int inputindex = inputstart + filterindex;
-            if (inputindex >= 0 && inputindex < inputindex < parameters.inputsize)
+            if (inputindex >= 0 && inputindex < parameters.inputsize)
                 result += parameters.input[inputindex] * parameters.filter[filterindex];
         }
         parameters.output[outputindex] = result;
