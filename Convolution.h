@@ -95,6 +95,7 @@ using ConvolutionCudaKernelFunction = void(*)(KernelParameters<T>);
 
 template <class T = int, int constsize=0>
 struct ConvolutionCudaKernel{
+    std::string type;
     std::string label;
     ConvolutionCudaKernelFunction<T, constsize> kernelfunction;
     bool usesconstantmemory;
@@ -102,22 +103,17 @@ struct ConvolutionCudaKernel{
 
 template <class T = int, int constsize=0>
 const std::vector<ConvolutionCudaKernel<T>> getKernels(){
+    /*For gcc compiler, print out full type name*/
+    std::string type = typeid(T).name() == "i" ? "int" : typeid(T).name();
+    type = typeid(T).name() == "f" ? "float" : typeid(T).name();
     
     const static std::vector<ConvolutionCudaKernel<T>> kernels{
-        { "Naive Convolution",    NaiveConvolution<T,constsize>   ,  false }, 
-        { "Constant Convolution", ConstantConvolution<T,constsize>,  true  }, 
+        { type, "Naive Convolution",    NaiveConvolution<T,constsize>   ,  false }, 
+        { type, "Constant Convolution", ConstantConvolution<T,constsize>,  true  }, 
         //{ "Shared Convolution",   SharedConvolution<T>   }
     };
     return kernels;
 };
-
-template <class T = int, int constsize=0>
-bool isSymmetric(const std::vector<T>& vec){
-    for(int i = 0; i < vec.size()/2; i++)
-        if (vec[i] != vec[vec.size()-1-i])
-            return false;
-    return true;
-}
 
 template<class T = int, int constsize=0>
 T CalculateOutputSize(T inputsize, T filtersize){
@@ -241,22 +237,13 @@ void TestAllKernels(const std::vector<T>& input, const std::vector<T>& filter){
 }
 
 template<class T = int, int constsize=0>
-void CsvPerformanceRow(std::ofstream& fstream, bool print, bool endl,  const std::vector<T>& input, const std::vector<T>&filter){
-    if (!endl){
-        if (print) std::cout << input.size() << ", " << filter.size() << ", ";
-        fstream << input.size() << ", " << filter.size() << ", ";
-    }
+void CsvPerformanceRow(std::ofstream& fstream, const std::vector<T>& input, const std::vector<T>&filter){
     for (auto kernel : getKernels<T>()) {
         if ( constsize != 0 || !kernel.usesconstantmemory ){
             Result<T> r = CudaPerformConvolution<T, constsize>(input, filter, kernel);
-            if (print)
-                std::cout << typeid(T).name() << ", " << kernel.label << ", " << r.executiontime << ", ";
-            fstream << typeid(T).name() << ", " << kernel.label << ", " << r.executiontime << ", ";
+            std::cout << r.executiontime << ", ";
+              fstream << r.executiontime << ", ";
         }
-    }
-    if (endl){
-        if (print) std::cout << std::endl;
-        fstream << std::endl;
     }
 }
 
