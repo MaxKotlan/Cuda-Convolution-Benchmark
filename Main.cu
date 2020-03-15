@@ -5,10 +5,8 @@
 bool enableconsole = true;
 
 void runCommand(std::string command){
-    std::cout << command << std::endl;
-    if (command == "test") RunTests(); else
-    if (command == "benchmark") Benchmark(); else
-    enableconsole = true;
+    if (command == "test") { RunTests(); enableconsole = false; }
+    if (command == "benchmark") {  Benchmark(); enableconsole = false; }
 }
 
 int main(int argc, char** argv){
@@ -28,8 +26,8 @@ int main(int argc, char** argv){
         std::cout << std::endl;
         std::string x = "";
         do{
-            std::cout << "Convolution Console: ";
             runCommand(x);
+            std::cout << std::endl << "Convolution Console: ";
         } while ((std::cin >> x) && x != "quit");
     }
 

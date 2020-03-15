@@ -8,6 +8,7 @@
 #include <vector>
 #include <algorithm>
 #include <assert.h>
+#include <fstream>
 #include "Startup.h"
 
 #define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
@@ -238,10 +239,8 @@ void TestAllKernels(const std::vector<T>& input, const std::vector<T>& filter){
             Test<T, constsize>(input, filter, kernel);
 }
 
-#include <fstream>
-
 template<class T = int, int constsize=0>
-void CsvPerformanceRow(std::fstream& fstream, bool print, const std::vector<T>& input, const std::vector<T>&filter){
+void CsvPerformanceRow(std::ofstream& fstream, bool print, const std::vector<T>& input, const std::vector<T>&filter){
     if (print) std::cout << input.size() << ", " << filter.size() << ", ";
     fstream << input.size() << ", " << filter.size() << ", ";
     for (auto kernel : getKernels<T>()) {
