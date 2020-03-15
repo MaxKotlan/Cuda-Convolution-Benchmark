@@ -94,7 +94,6 @@ __global__ void SharedConvolution(KernelParameters<T> parameters){
     int outputindex = blockDim.x * blockIdx.x + threadIdx.x;
     if (outputindex < parameters.outputsize){
 
-        //sharedinput<T>
         sharedinput<T>[threadIdx.x] = parameters.input[outputindex];
         __syncthreads();
 
@@ -102,8 +101,8 @@ __global__ void SharedConvolution(KernelParameters<T> parameters){
         int inputstart = outputindex - (parameters.filtersize-1);
         for (int filterindex = 0; filterindex < parameters.filtersize; filterindex++) {
             int inputindex = inputstart + filterindex;
-            if (inputindex >= 0 && inputindex < parameters.inputsize)
-                result += parameters.input[inputindex] * parameters.filter[filterindex];
+            if (inputindex >= 0 && inputindex < parameters.inputsize && inputindex < blockDim.x)
+                result += sharedinput<T>[inputindex] * parameters.filter[filterindex];
         }
         parameters.output[outputindex] = result;
     }
@@ -193,7 +192,7 @@ Result<T> CudaPerformConvolution(const std::vector<T>& input, const std::vector<
     gpuErrchk(cudaEventRecord(start));
 
     if (kernelproperties.usessharedmemory)
-        kernelproperties.kernelfunction<<< output.size()/1024+1, 1024, 1024>>>(parameters);
+        kernelproperties.kernelfunction<<< output.size()/1024+1, 1024, 1024*sizeof(T)>>>(parameters);
     else
         kernelproperties.kernelfunction<<< output.size()/1024+1, 1024>>>(parameters);
     
