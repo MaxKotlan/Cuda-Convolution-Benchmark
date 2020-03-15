@@ -216,7 +216,7 @@ void TestAllKernels(const std::vector<T>& input, const std::vector<T>& filter){
 }
 
 template<class T = int>
-void savecsv(std::ostream out,const std::vector<T>& input, const std::vector<T>&mask){
+void savecsv(std::ostream out,const std::vector<T>& input, const std::vector<T>&filter){
     for (auto kernel : getKernels<T>())
         Test(input, filter, kernel);
 }
