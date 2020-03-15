@@ -16,7 +16,10 @@ void Benchmark(){
         std::generate(input.begin(), input.end(), []() { return rand()%100; });
         std::vector<int> filter(i/2);
         std::generate(filter.begin(), filter.end(), []() { return rand()%100; });
-        CsvPerformanceRow<int, 0x990>(fs, true, input, filter);
+        if (i/2 < 0x990)
+            CsvPerformanceRow<int, 0x990>(fs, true, input, filter);
+        else 
+        CsvPerformanceRow<int>(fs, true, input, filter);
     }
     
     fs.close();

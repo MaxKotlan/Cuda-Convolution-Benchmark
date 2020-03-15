@@ -26,6 +26,7 @@ void RunTests(){
     printFooter();
     printHeader("Lecture Slide");
     {
+        TestAllKernels({1,4,2,5}, {1,4,3}, {3,16,23,27,22,5});
         TestAllKernels(std::vector<int>  {1,4,2,5}, std::vector<int>  {1,4,3},   std::vector<int>  {3,16,23,27,22,5});
         TestAllKernels(std::vector<float>{1,4,2,5}, std::vector<float>{1,4,3},   std::vector<float>{3,16,23,27,22,5});
         std::cout << "\tTesting cpu version: ";
