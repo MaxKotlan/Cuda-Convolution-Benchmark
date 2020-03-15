@@ -109,6 +109,27 @@ __global__ void SharedConvolution(KernelParameters<T> parameters){
 
 }
 
+template<class T = int, int constsize=0>
+__global__ void SharedandConstantConvolution(KernelParameters<T> parameters){
+
+    int outputindex = blockDim.x * blockIdx.x + threadIdx.x;
+    if (outputindex < parameters.outputsize){
+
+        sharedinput<T>[threadIdx.x] = parameters.input[outputindex];
+        __syncthreads();
+
+        T result = parameters.ghostvalue;
+        int inputstart = outputindex - (parameters.filtersize-1);
+        for (int filterindex = 0; filterindex < parameters.filtersize; filterindex++) {
+            int inputindex = inputstart + filterindex;
+            if (inputindex >= 0 && inputindex < parameters.inputsize && inputindex < blockDim.x)
+                result += sharedinput<T>[inputindex] * constantmemory<T, constsize>[filterindex];
+        }
+        parameters.output[outputindex] = result;
+    }
+
+}
+
 template <class T = int, int constsize=0>
 using ConvolutionCudaKernelFunction = void(*)(KernelParameters<T>);
 
@@ -122,16 +143,17 @@ struct ConvolutionCudaKernel{
 };
 
 template <class T = int, int constsize=0>
-const std::vector<ConvolutionCudaKernel<T>> getKernels(){
+const std::vector<ConvolutionCudaKernel<T>>& getKernels(){
     /*For gcc compiler, print out full type name*/
     std::string type = std::string(typeid(T).name());
     if (type == "i") type = "int";
     if (type == "f") type = "float";
 
     const static std::vector<ConvolutionCudaKernel<T>> kernels{
-        { type, "Naive Convolution",    NaiveConvolution<T,constsize>   ,  false, false }, 
-        { type, "Constant Convolution", ConstantConvolution<T,constsize>,  true , false }, 
-        { type, "Shared Convolution",   SharedConvolution<T,constsize>  ,  false, true  }
+        { type, "Naive Convolution",               NaiveConvolution<T,constsize>             , false, false }, 
+        { type, "Constant Convolution",            ConstantConvolution<T,constsize>          , true , false }, 
+        { type, "Shared Convolution",              SharedConvolution<T,constsize>            , false, true  },
+        { type, "Shared and Constant Convolution", SharedandConstantConvolution<T, constsize>, true , true  }
     };
     return kernels;
 };
@@ -165,7 +187,7 @@ Result<T> CpuPerformConvolution(const std::vector<T>& input, const std::vector<T
 }
 
 template<class T = int, int constsize>
-Result<T> CudaPerformConvolution(const std::vector<T>& input, const std::vector<T>& filter, ConvolutionCudaKernel<T> kernelproperties){
+Result<T> CudaPerformConvolution(const std::vector<T>& input, const std::vector<T>& filter, const ConvolutionCudaKernel<T>& kernelproperties){
     T* device_input = nullptr, *device_filter = nullptr, *device_output = nullptr; Result<T> result;
     std::vector<T> output(CalculateOutputSize(input.size(), filter.size()));
 
@@ -229,7 +251,7 @@ void printall(const std::vector<T>& vec) {
 
 /*Test Visually*/
 template<class T = int, int constsize>
-Result<T> Test(const std::vector<T>& input, const std::vector<T>& filter, ConvolutionCudaKernel<T> kern){
+Result<T> Test(const std::vector<T>& input, const std::vector<T>& filter, const ConvolutionCudaKernel<T>& kern){
     std::cout << "\tType: " << typeid(T).name() << " Kernel: " << kern.label;
     std::cout << " Input: "; printsome(input,10);
     std::cout << " Filter:   "; printsome(filter,10);
@@ -240,7 +262,7 @@ Result<T> Test(const std::vector<T>& input, const std::vector<T>& filter, Convol
 
 /*Test and Assert*/
 template<class T = int, int constsize=0>
-void Test(const std::vector<T>& input, const std::vector<T>& filter, const std::vector<T>& expected, ConvolutionCudaKernel<T> kern){
+void Test(const std::vector<T>& input, const std::vector<T>& filter, const std::vector<T>& expected, const ConvolutionCudaKernel<T>& kern){
     Result<T> r = Test<T, constsize>(input, filter, kern);
     assert(std::equal(r.output.begin(), r.output.end(), expected.begin() ));
 }
