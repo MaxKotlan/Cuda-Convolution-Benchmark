@@ -229,7 +229,7 @@ Result<T> CudaPerformConvolution(const std::vector<T>& input, const std::vector<
     KernelParameters<T> parameters = { (T*)device_input, (int)input.size(), (T*)device_filter, (int)filter.size(), (T*)device_output, (int)output.size() };
     gpuErrchk(cudaEventRecord(start));
 
-    int threadsperblock = 3;
+    int threadsperblock = 1024;
 
     if (kernelproperties.usessharedmemory)
         kernelproperties.kernelfunction<<< output.size()/threadsperblock+1, threadsperblock, threadsperblock*sizeof(T)>>>(parameters);
