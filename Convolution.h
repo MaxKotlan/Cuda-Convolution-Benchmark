@@ -100,46 +100,51 @@ __global__ void SharedConvolution(KernelParameters<T> parameters){
 
         int This_tile_start_point =    blockIdx.x * blockDim.x;
         int Next_tile_start_point = (blockIdx.x+1)* blockDim.x;
-        int N_start_point = outputindex - (parameters.filtersize-1);
+        int input_start = outputindex - (parameters.filtersize-1);
 
         T result = parameters.ghostvalue;
-        for (int j = 0; j < parameters.filtersize; j++) {
-            int N_index = N_start_point + j;
-            if (N_index >= 0 && N_index < parameters.inputsize){
-                if (N_index >= This_tile_start_point &&  N_index < blockDim.x && N_index  < Next_tile_start_point){
-                    result += sharedinput<T>[threadIdx.x + j - (parameters.filtersize - 1)] * parameters.filter[j];
+        for (int filterindex = 0; filterindex < parameters.filtersize; filterindex++) {
+            int inputindex = input_start + filterindex;
+            if (inputindex >= 0 && inputindex < parameters.inputsize){
+                if (inputindex >= This_tile_start_point &&  inputindex < blockDim.x && inputindex  < Next_tile_start_point){
+                    result += sharedinput<T>[threadIdx.x + filterindex - (parameters.filtersize - 1)] * parameters.filter[filterindex];
                 } else {
-                    result += parameters.input[N_index] * parameters.filter[j];
+                    result += parameters.input[inputindex] * parameters.filter[filterindex];
                 }
                 parameters.output[outputindex] = result;
             }
         }
     }
-
 }
 
-/*
 template<class T = int, int constsize=0>
-__global__ void SharedandConstantConvolution(KernelParameters<T> parameters){
+__global__ void SharedAndConstantConvolution(KernelParameters<T> parameters){
 
     int outputindex = blockDim.x * blockIdx.x + threadIdx.x;
     if (outputindex < parameters.outputsize){
 
         if (outputindex < parameters.inputsize)
-        sharedinput<T>[threadIdx.x] = parameters.input[outputindex];
+            sharedinput<T>[threadIdx.x] = parameters.input[outputindex];
         __syncthreads();
 
-        T result = parameters.ghostvalue;
-        int inputstart = outputindex - (parameters.filtersize-1);
-        for (int filterindex = 0; filterindex < parameters.filtersize; filterindex++) {
-            int inputindex = inputstart + filterindex;
-            if (inputindex >= 0 && inputindex < parameters.inputsize && inputindex < blockDim.x)
-                result += sharedinput<T>[inputindex] * constantmemory<T, constsize>[filterindex];
-        }
-        parameters.output[outputindex] = result;
-    }
+        int This_tile_start_point =    blockIdx.x * blockDim.x;
+        int Next_tile_start_point = (blockIdx.x+1)* blockDim.x;
+        int input_start = outputindex - (parameters.filtersize-1);
 
-}*/
+        T result = parameters.ghostvalue;
+        for (int filterindex = 0; filterindex < parameters.filtersize; filterindex++) {
+            int inputindex = input_start + filterindex;
+            if (inputindex >= 0 && inputindex < parameters.inputsize){
+                if (inputindex >= This_tile_start_point &&  inputindex < blockDim.x && inputindex  < Next_tile_start_point){
+                    result += sharedinput<T>[threadIdx.x + filterindex - (parameters.filtersize - 1)] * constantmemory<T, constsize>[filterindex];
+                } else {
+                    result += parameters.input[inputindex] * constantmemory<T, constsize>[filterindex];
+                }
+                parameters.output[outputindex] = result;
+            }
+        }
+    }
+}
 
 template <class T = int, int constsize=0>
 using ConvolutionCudaKernelFunction = void(*)(KernelParameters<T>);
@@ -164,7 +169,7 @@ const std::vector<ConvolutionCudaKernel<T>>& getKernels(){
         { type, "Naive Convolution",               NaiveConvolution<T,constsize>             , false, false }, 
         { type, "Constant Convolution",            ConstantConvolution<T,constsize>          , true , false }, 
         { type, "Shared Convolution",              SharedConvolution<T,constsize>            , false, true  },
-        //{ type, "Shared and Constant Convolution", SharedandConstantConvolution<T, constsize>, true , true  }
+        { type, "Shared and Constant Convolution", SharedAndConstantConvolution<T, constsize>, true , true  }
     };
     return kernels;
 };
