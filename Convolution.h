@@ -95,21 +95,30 @@ __global__ void SharedConvolution(KernelParameters<T> parameters){
     if (outputindex < parameters.outputsize){
 
         if (outputindex < parameters.inputsize)
-        sharedinput<T>[threadIdx.x] = parameters.input[outputindex];
+            sharedinput<T>[threadIdx.x] = parameters.input[outputindex];
         __syncthreads();
 
+        int This_tile_start_point =    blockIdx.x * blockDim.x;
+        int Next_tile_start_point = (blockIdx.x+1)* blockDim.x;
+        int N_start_point = outputindex - (parameters.filtersize-1);
+
         T result = parameters.ghostvalue;
-        int inputstart = outputindex - (parameters.filtersize-1);
-        for (int filterindex = 0; filterindex < parameters.filtersize; filterindex++) {
-            int inputindex = inputstart + filterindex;
-            if (inputindex >= 0 && inputindex < parameters.inputsize && inputindex < blockDim.x)
-                result += sharedinput<T>[inputindex] * parameters.filter[filterindex];
+        for (int j = 0; j < parameters.filtersize; j++) {
+            int N_index = N_start_point + j;
+            if (N_index >= 0 && N_index < parameters.inputsize){
+                if (N_index >= This_tile_start_point &&  N_index < blockDim.x && N_index  < Next_tile_start_point){
+                    result += sharedinput<T>[threadIdx.x + j - (parameters.filtersize - 1)] * parameters.filter[j];
+                } else {
+                    result += parameters.input[N_index] * parameters.filter[j];
+                }
+                parameters.output[outputindex] = result;
+            }
         }
-        parameters.output[outputindex] = result;
     }
 
 }
 
+/*
 template<class T = int, int constsize=0>
 __global__ void SharedandConstantConvolution(KernelParameters<T> parameters){
 
@@ -130,7 +139,7 @@ __global__ void SharedandConstantConvolution(KernelParameters<T> parameters){
         parameters.output[outputindex] = result;
     }
 
-}
+}*/
 
 template <class T = int, int constsize=0>
 using ConvolutionCudaKernelFunction = void(*)(KernelParameters<T>);
@@ -155,7 +164,7 @@ const std::vector<ConvolutionCudaKernel<T>>& getKernels(){
         { type, "Naive Convolution",               NaiveConvolution<T,constsize>             , false, false }, 
         { type, "Constant Convolution",            ConstantConvolution<T,constsize>          , true , false }, 
         { type, "Shared Convolution",              SharedConvolution<T,constsize>            , false, true  },
-        { type, "Shared and Constant Convolution", SharedandConstantConvolution<T, constsize>, true , true  }
+        //{ type, "Shared and Constant Convolution", SharedandConstantConvolution<T, constsize>, true , true  }
     };
     return kernels;
 };
@@ -215,10 +224,12 @@ Result<T> CudaPerformConvolution(const std::vector<T>& input, const std::vector<
     KernelParameters<T> parameters = { (T*)device_input, (int)input.size(), (T*)device_filter, (int)filter.size(), (T*)device_output, (int)output.size() };
     gpuErrchk(cudaEventRecord(start));
 
+    int threadsperblock = 3;
+
     if (kernelproperties.usessharedmemory)
-        kernelproperties.kernelfunction<<< output.size()/1024+1, 1024, 1024*sizeof(T)>>>(parameters);
+        kernelproperties.kernelfunction<<< output.size()/threadsperblock+1, threadsperblock, threadsperblock*sizeof(T)>>>(parameters);
     else
-        kernelproperties.kernelfunction<<< output.size()/1024+1, 1024>>>(parameters);
+        kernelproperties.kernelfunction<<< output.size()/threadsperblock+1, threadsperblock>>>(parameters);
     
     gpuErrchk(cudaEventRecord(stop));
     
