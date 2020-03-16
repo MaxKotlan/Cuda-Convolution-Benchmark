@@ -28,7 +28,7 @@ void Benchmark(){
     std::cout << std::endl;
     ofs       << std::endl;
 
-    for (int i = 1; i < (1<<25); i*=2 ){
+    for (int i = 1; i < (1<<29); i*=2 ){
 
         /*Generates a random vector of size i, with a filter of size i/2. If i/2 > constantmemorysize 
         then use the maximum possible filtersize that will fit into const mem*/
