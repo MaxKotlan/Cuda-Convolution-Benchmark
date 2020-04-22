@@ -202,7 +202,7 @@ Result<T> CpuPerformConvolution(const std::vector<T>& input, const std::vector<T
     return std::move(r);
 }
 
-template<class T = int, int constsize>
+template<class T = int, int constsize=0>
 Result<T> CudaPerformConvolution(const std::vector<T>& input, const std::vector<T>& filter, const ConvolutionCudaKernel<T>& kernelproperties){
     T* device_input = nullptr, *device_filter = nullptr, *device_output = nullptr; Result<T> result;
     std::vector<T> output(CalculateOutputSize(input.size(), filter.size()));
